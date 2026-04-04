@@ -1,4 +1,4 @@
-.PHONY: build test clean fmt start stop
+.PHONY: build test clean fmt clippy start stop
 
 LIMA_VM = ebpf-dev
 PROJECT_DIR = $(HOME)/Dev/sfp
@@ -20,6 +20,11 @@ clean:
 
 format:
 	cargo +nightly fmt --all
+
+check:
+	limactl start $(LIMA_VM) || true
+	limactl shell $(LIMA_VM) -- bash -c "cd $(PROJECT_DIR) && CARGO_TARGET_DIR=/tmp/sfp-target cargo clippy"
+	limactl stop $(LIMA_VM)
 
 start:
 	limactl start $(LIMA_VM)
