@@ -9,7 +9,7 @@ use aya_ebpf::{
 use aya_log_ebpf::info;
 
 static START_TIME: HashMap<u32, u64> = HashMap::with_max_entries(10240, 0);
-static EVENTS: RingBuf = RingBuf::with_max_entries(4096 * 1024, 0);
+static EVENTS: RingBuf = RingBuf::with_byte_size(4096 * 1024, 0);
 
 #[fentry(function = "vfs_read")]
 pub fn sfp(ctx: FEntryContext) -> u32 {
