@@ -1,8 +1,15 @@
 #![no_std]
 #![no_main]
 
-use aya_ebpf::{macros::fentry, programs::FEntryContext};
+use aya_ebpf::{
+    macros::fentry,
+    maps::{HashMap, RingBuf},
+    programs::FEntryContext,
+};
 use aya_log_ebpf::info;
+
+static START_TIME: HashMap<u32, u64> = HashMap::with_max_entries(10240, 0);
+static EVENTS: RingBuf = RingBuf::with_max_entries(4096 * 1024, 0);
 
 #[fentry(function = "vfs_read")]
 pub fn sfp(ctx: FEntryContext) -> u32 {
@@ -22,7 +29,3 @@ fn try_sfp(ctx: FEntryContext) -> Result<u32, u32> {
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
-
-#[unsafe(link_section = "license")]
-#[unsafe(no_mangle)]
-static LICENSE: [u8; 13] = *b"Dual MIT/GPL\0";
