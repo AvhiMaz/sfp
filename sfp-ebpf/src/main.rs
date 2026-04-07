@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+#[cfg(not(test))]
+use core::panic::PanicInfo;
+
 use aya_ebpf::{
     EbpfContext,
     helpers::generated::bpf_ktime_get_ns,
@@ -36,4 +39,10 @@ pub fn vf_read_exit(ctx: FExitContext) -> u32 {
         START_TIME.remove(&pid);
     }
     0
+}
+
+#[cfg(not(test))]
+#[panic_handler]
+pub fn panic(_info: &PanicInfo) -> ! {
+    loop {}
 }
