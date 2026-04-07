@@ -23,7 +23,7 @@ static EVENTS: RingBuf = RingBuf::with_byte_size(4096 * 1024, 0);
 pub fn vf_read_start(ctx: FEntryContext) -> u32 {
     let pid = ctx.pid();
     let ts = unsafe { bpf_ktime_get_ns() };
-    START_TIME.insert(&pid, &ts, 0);
+    let _ = START_TIME.insert(&pid, &ts, 0);
     0
 }
 
@@ -36,7 +36,7 @@ pub fn vf_read_exit(ctx: FExitContext) -> u32 {
             entry.write(LatencyEvent { pid, latency_ns });
             entry.submit(0);
         }
-        START_TIME.remove(&pid);
+        let _ = START_TIME.remove(&pid);
     }
     0
 }
