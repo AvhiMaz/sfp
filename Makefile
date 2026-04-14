@@ -1,4 +1,4 @@
-.PHONY: build test clean fmt clippy start stop
+.PHONY: build test clean fmt clippy start stop lima-build lima-run lima-shell
 
 LIMA_VM = ebpf-dev
 PROJECT_DIR = $(HOME)/Dev/sfp
@@ -28,6 +28,16 @@ check:
 
 start:
 	limactl start $(LIMA_VM)
+	limactl shell $(LIMA_VM)
 
 stop:
 	limactl stop $(LIMA_VM)
+
+lima-build:
+	CARGO_TARGET_DIR=/tmp/sfp-target cargo build
+
+lima-run:
+	sudo -E env CARGO_TARGET_DIR=/tmp/sfp-target $(HOME)/.cargo/bin/cargo run -- $(ARGS)
+
+lima-shell:
+	limactl shell $(LIMA_VM)
