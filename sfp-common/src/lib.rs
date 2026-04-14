@@ -5,6 +5,7 @@
 pub struct LatencyEvent {
     pub pid: u32,
     pub latency_ns: u64,
+    pub filename: [u8; 256],
 }
 
 #[cfg(feature = "user")]

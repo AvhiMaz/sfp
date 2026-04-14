@@ -6,6 +6,10 @@ use log::debug;
 struct Opt {
     #[arg(short, long)]
     pid: Vec<u32>,
+    #[arg(long)]
+    histogram: bool,
+    #[arg(long)]
+    files: bool,
 }
 
 struct Histogram {
@@ -110,7 +114,9 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    histogram.print();
+    if opt.histogram {
+        histogram.print();
+    }
 
     Ok(())
 }

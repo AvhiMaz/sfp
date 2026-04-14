@@ -33,7 +33,13 @@ pub fn vf_read_exit(ctx: FExitContext) -> u32 {
     if let Some(start) = unsafe { START_TIME.get(&pid) } {
         let latency_ns = unsafe { bpf_ktime_get_ns() } - start;
         if let Some(mut entry) = EVENTS.reserve::<LatencyEvent>(0) {
-            entry.write(LatencyEvent { pid, latency_ns });
+            let file: *const core::ffi::c_void = ctx.arg(0);
+            let mut filename = [0u8; 256];
+            entry.write(LatencyEvent {
+                pid,
+                latency_ns,
+                filename,
+            });
             entry.submit(0);
         }
         let _ = START_TIME.remove(&pid);
