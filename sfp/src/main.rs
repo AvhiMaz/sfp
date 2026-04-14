@@ -8,10 +8,52 @@ struct Opt {
     pid: Vec<u32>,
 }
 
+struct Histogram {
+    buckets: [u64; 5],
+}
+
+impl Histogram {
+    fn new() -> Self {
+        Self { buckets: [0; 5] }
+    }
+
+    fn record(&mut self, latency_ns: u64) {
+        let idx = if latency_ns < 1_000 {
+            0
+        } else if latency_ns < 10_000 {
+            1
+        } else if latency_ns < 100_000 {
+            2
+        } else if latency_ns < 1_000_000 {
+            3
+        } else {
+            4
+        };
+        self.buckets[idx] += 1;
+    }
+
+    fn print(&self) {
+        let labels = ["    <1µs", "  1-10µs", "10-100µs", "100µs-1ms", "    >1ms"];
+        let total: u64 = self.buckets.iter().sum();
+        println!("vfs_read latency histogram (total: {})", total);
+        if total == 0 {
+            println!("  (no events yet)");
+            return;
+        }
+        let max = *self.buckets.iter().max().unwrap();
+        for (i, &count) in self.buckets.iter().enumerate() {
+            let bar_len = (count * 40 / max.max(1)) as usize;
+            let bar = ">".repeat(bar_len);
+            println!("  {}  {:40}  {}", labels[i], bar, count);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let opt = Opt::parse();
     env_logger::init();
+    let mut histogram = Histogram::new();
 
     let rlimit = rlimit {
         rlim_cur: RLIM_INFINITY,
@@ -44,6 +86,8 @@ async fn main() -> anyhow::Result<()> {
 
     let mut fd = tokio::io::unix::AsyncFd::new(ring_buffer)?;
 
+    unsafe { libc::signal(libc::SIGINT, libc::SIG_DFL) };
+
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => break,
@@ -57,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
                         };
 
                         if opt.pid.is_empty() || opt.pid.contains(&event.pid) {
-                            println!("pid: {}, latency_ns: {}", event.pid, event.latency_ns);
+                            histogram.record(event.latency_ns);
                         }
                     }
                 }
@@ -65,6 +109,8 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
+
+    histogram.print();
 
     Ok(())
 }
