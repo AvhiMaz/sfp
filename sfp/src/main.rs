@@ -47,10 +47,15 @@ impl Histogram {
         let max = *self.buckets.iter().max().unwrap();
         for (i, &count) in self.buckets.iter().enumerate() {
             let bar_len = (count * 40 / max.max(1)) as usize;
-            let bar = ">".repeat(bar_len);
+            let bar = "█".repeat(bar_len);
             println!("  {}  {:40}  {}", labels[i], bar, count);
         }
     }
+}
+
+fn parse_filename(filename: &[u8; 256]) -> &str {
+    let end = filename.iter().position(|&b| b == 0).unwrap_or(256);
+    std::str::from_utf8(&filename[..end]).unwrap_or("<invalid>")
 }
 
 #[tokio::main]
@@ -58,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
     let opt = Opt::parse();
     env_logger::init();
     let mut histogram = Histogram::new();
+    let mut total_events: u64 = 0;
 
     let rlimit = rlimit {
         rlim_cur: RLIM_INFINITY,
@@ -90,8 +96,6 @@ async fn main() -> anyhow::Result<()> {
 
     let mut fd = tokio::io::unix::AsyncFd::new(ring_buffer)?;
 
-    unsafe { libc::signal(libc::SIGINT, libc::SIG_DFL) };
-
     loop {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => break,
@@ -104,8 +108,17 @@ async fn main() -> anyhow::Result<()> {
                             (item.as_ptr() as *const sfp_common::LatencyEvent).read_unaligned()
                         };
 
+                        total_events += 1;
                         if opt.pid.is_empty() || opt.pid.contains(&event.pid) {
-                            histogram.record(event.latency_ns);
+                            if opt.files {
+                                let fname = parse_filename(&event.filename);
+                                let skip = matches!(fname, "ptmx" | "tty" | "TCP" | "UDP" | "UNIX-STREAM" | "<empty>");
+                                if !skip {
+                                    println!("pid: {:6}  file: {:<30}  latency: {:>10}ns", event.pid, fname, event.latency_ns);
+                                }
+                            } else {
+                                histogram.record(event.latency_ns);
+                            }
                         }
                     }
                 }
@@ -113,6 +126,8 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
+
+    println!("total events captured: {}", total_events);
 
     if opt.histogram {
         histogram.print();
