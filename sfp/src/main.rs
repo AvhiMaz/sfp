@@ -63,7 +63,6 @@ async fn main() -> anyhow::Result<()> {
     let opt = Opt::parse();
     env_logger::init();
     let mut histogram = Histogram::new();
-    let mut total_events: u64 = 0;
 
     let rlimit = rlimit {
         rlim_cur: RLIM_INFINITY,
@@ -108,7 +107,6 @@ async fn main() -> anyhow::Result<()> {
                             (item.as_ptr() as *const sfp_common::LatencyEvent).read_unaligned()
                         };
 
-                        total_events += 1;
                         if opt.pid.is_empty() || opt.pid.contains(&event.pid) {
                             if opt.files {
                                 let fname = parse_filename(&event.filename);
@@ -126,8 +124,6 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
-
-    println!("total events captured: {}", total_events);
 
     if opt.histogram {
         histogram.print();
